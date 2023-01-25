@@ -1,0 +1,403 @@
+### Introduction - descriptive statistic
+rm(list = ls())
+dev.off()
+
+setwd('C:/Users/ilona/Dropbox/Uni/Bamberg/Survival Analysis')
+
+install.packages("haven", dependencies = TRUE)
+library(haven) # load read_dta
+bader <- read_dta("New_ISQ regular leadership data.dta")
+View(bader)
+install.packages("eha", dependencies = TRUE)
+install.packages("simPH", dependencies = TRUE)
+install.packages("pastecs", dependencies = TRUE)
+install.packages("Hmisc", dependencies = TRUE) # Package Hmisc für deskriptive Statistik
+install.packages("data.table", dependencies = TRUE)
+install.packages("lattice", dependencies = TRUE)
+install.packages("Formula", dependencies = TRUE)
+install.packages("ggplot2", dependencies = TRUE)
+install.packages("rworldmap", dependencies = TRUE)
+install.packages("countrycode", dependencies = TRUE)
+install.packages("stargazer", dependencies = TRUE)
+install.packages("effects", dependencies = TRUE)
+install.packages("plm", dependencies = TRUE)
+install.packages("pscl", dependencies = TRUE)
+install.packages("reshape", dependencies = TRUE)
+install.packages("DAMisc", dependencies = TRUE)
+install.packages("Rcmdr", dependencies = TRUE) #for unfold command
+install.packages("RcmdrPlugin.survival", dependencies = TRUE) # for unfold command
+library(survival) # load the survival library, which is pre-installed
+library(eha) #load eha libary
+library(simPH) # simpulating plotting effects
+library(pastecs) #descriptive statistics
+library(Hmisc) # load the Hmisc library for descriptive statistics
+library(tidyr)
+library(dplyr)          # for manipulate dataset
+library(readr)          # for read dta files
+library(readstata13)    # for read stata data for stata version after 13th
+
+library(ggplot2)        # for graphics
+library(rworldmap)      # for drawing maps
+library(countrycode)    # for managing country codes
+library(stargazer)      # for Regression table
+library(effects)        # for effect function
+library(gridExtra)      # for grid.arrange
+library(plm)            # for plm
+library(foreign)        # for read.dta
+#library(MASS)           # for ordered logit (polr), negative binomial regression (glm.nb), poisson (glm). 
+# MASS make be able to use function "select". I have problem with the one from "dplyr"
+library(pscl)           # for hitmiss
+#library(ROCR)           # for ROC curve
+#library(separationplot) # separation plot
+library(reshape)        # untable function (for expand data set)
+library(DAMisc)         # for btscs (Binary time-series-cross-sectional analysis)
+library(nnet)           # for multinomial logit
+library(sp)
+library(RcmdrPlugin.survival)
+library(Rcmdr)
+##############################
+
+bader
+bader[1:5, ] 
+describe(bader) #descriptive statistic
+summary(bader) #summary
+table(bader$leaderfall_reg) #1 removed from office #0 stayed
+table(bader$sample) #1 removed from office #0 stayed
+
+##creating the sub-sample##
+#excluding US
+bader2 <- bader[- grep("United States of America", bader$ctryname),]
+#check number of observations
+table(bader2$leaderfall_reg)
+#excluding observations before 1993
+bader3 <- bader2 %>% filter(year > 1992) 
+#excluding further observations with missing values of key independent variables
+bader4 <- bader3[ is.na(bader3 $ polity2) == FALSE , ] # Delete NA values
+bader5 <- bader4[ is.na(bader4 $ growthlag) == FALSE , ]               # Delete NA values
+bader6 <- bader5[ is.na(bader5 $ lagautopolity) == FALSE , ]         # Delete NA values
+bader7 <- bader6[ is.na(bader6 $ leaderfallregion_reg) == FALSE , ]  # Delete NA values
+bader8 <- bader7[ is.na(bader7 $ mduration_reg) == FALSE , ]         # Delete NA values
+bader9 <- bader8[ is.na(bader8 $ leaderfall_reg) == FALSE , ]         # Delete NA values
+
+table(bader9$leaderfall_reg)
+table(bader$leaderfall_reg)
+baders <- bader9 
+# Now I re-created the subsample as in Bader 2889 Observations (baders).
+
+##creating leadership survival
+table(bader$syear)
+leader_duration <- baders$year-baders$syear
+table(leader_duration)
+#Add variable survival-time to the dataframe now 56 variables before 55
+baders <- data.frame(baders, leader_duration)
+table(baders$leader_duration)
+baders$leader_duration[baders$leader_duration == "0"] <- NA
+summary(baders$leader_duration)
+table(baders$leader_duration)
+length (baders.na$leader_duration)
+# Barchart with simple frequencies
+# Create object including simple counts per category
+Count_leader_duration <- table(leader_duration)
+Count_leader_duration
+# Create object for percentages
+Percent_leader_duration <- table(leader_duration)/2407 # 442 is the total number of cases (wars) in the dataset
+Percent_leader_duration
+
+####INDEPENDET VARIABLES########
+
+# delete NA values in order to calculate Standard deviation
+baders.na1 <- baders[ is.na(baders $ leader_duration) == FALSE , ] # Delete NA values
+baders.na2 <- baders.na1[ is.na(baders.na1 $ laglnexpCHshare) == FALSE , ] # Delete NA values
+baders.na <- baders.na2[ is.na(baders.na2 $ laglnarms) == FALSE , ] # Delete NA values
+
+#replicate summary table
+sink('summary.txt')
+table(baders.na$leader_duration)
+summary(baders.na$leader_duration)      #survival time
+sd(baders.na$leader_duration)
+length (baders.na$leader_duration)
+summary(baders.na$leaderfall_reg)       #leadership duration
+sd(baders$leaderfall_reg) 
+table(baders.na$leaderfall_reg)
+length (baders.na$leaderfall_reg)
+                                        #regime duration - not replictable
+summary(baders.na$diplomacyAddlag)      #diclomacy with china
+sd(baders.na$diplomacyAddlag) 
+length (baders.na$diplomacyAddlag)
+summary(baders.na$laglnarms)            #arms from china
+sd(baders.na$laglnarms)
+length (baders.na$laglnarms)
+summary(baders.na$laglnexpCHshare)      #exports to china
+sd(baders.na$laglnexpCHshare)
+length (baders.na$laglnexpCHshare)
+summary(baders.na$lagnoprojectsM)       #number of aid projects
+baders.na3 <- baders.na[ is.na(baders.na $ lagnoprojectsM) == FALSE , ] # Delete NA values
+summary(baders.na3$lagnoprojectsM) 
+sd(baders.na3$lagnoprojectsM)
+length (baders.na3$lagnoprojectsM)
+summary(baders.na$laglneconcoopMGDP)    #economic cooperation
+baders.na4 <- baders.na[ is.na(baders.na $ laglneconcoopMGDP) == FALSE , ] # Delete NA values
+summary(baders.na4$laglneconcoopMGDP)    #economic cooperation
+sd(baders.na4$laglneconcoopMGDP)
+length (baders.na4$laglneconcoopMGDP)
+summary(baders.na$lagautopolity)        #democracy
+sd(baders.na$lagautopolity)
+length (baders.na$lagautopolity)
+                                        #number of previous regime failures
+summary(baders.na$mduration_reg)        #mean duration previous leaders
+sd(baders.na$mduration_reg)
+length (baders.na$mduration_reg)
+summary(baders.na$leaderfallregion_reg) #% of failures in neighbourhood
+sd(baders.na$leaderfallregion_reg)
+length (baders.na$leaderfallregion_reg)
+summary(baders.na$growthlag)            #gdp growth
+sd(baders.na$growthlag)
+length (baders.na$growthlag)
+summary(baders.na$lngdplag)             #ln gdp growth
+sd(baders.na$lngdplag)
+length (baders.na$lngdplag)
+
+#variable as in stata for a test
+baders$lntautopolity <- log(baders$X_t)*(baders$lagautopolity)
+View(baders$lntautopolity)
+
+### ANALYZING RESIDUALS: Testing proportional hazards assumption (Schoenfeld residuals)
+Test.2 <- coxph(Surv(leader_duration,leaderfall_reg) ~ diplomacyAddlag + laglnarms +
+                      laglnexpCHshare + lagpolitydXdiplomacyAdd + lagpolitydXlnexpCHshare +
+                      lagpolitydXarms + growthlag + lngdplag + mduration_reg +
+                      leaderfallregion_reg + autoPolity 
+                    , method = "efron", data = baders)
+summary(Test.2)
+#using Model 2 as Bader
+# Produce residuals
+r <- Test.2$residual # modified residuals
+
+# Recover Cox Snell residual values from modified values
+rr <- baders$leaderfall_reg-r
+fit <- survfit(Surv(rr,baders$leaderfall_reg) ~ 1) # Kaplan Meier estimate
+fit
+S <- fit$surv
+S
+T <- fit$time
+T
+# Plot residuals
+plot(T,S, xlim=range(T), ylim=c(0,1), xlab="time", ylab="Cox-Snell residual values")
+t0 <- seq(0,max(T), 0.05)
+s0 <- exp(-t0)
+lines(t0,s0)
+
+### ANALYZING RESIDUALS: Testing proportional hazards assumption (Schoenfeld residuals)
+cox.zph(Test.2)
+plot(cox.zph(Test.2))
+
+#######################
+#With lagged autpPolity
+#######################
+CoxModel.2 <- coxph(Surv(leader_duration,leaderfall_reg) ~ diplomacyAddlag + laglnarms +
+                      laglnexpCHshare + lagpolitydXdiplomacyAdd + lagpolitydXlnexpCHshare +
+                      lagpolitydXarms + growthlag + lngdplag + mduration_reg +
+                      leaderfallregion_reg + lagautopolity 
+                    , method = "efron", data = baders)
+summary(CoxModel.2)
+r <- CoxModel.2$residual # modified residuals
+
+# Recover Cox Snell residual values from modified values
+rr <- baders$leaderfall_reg-r
+fit <- survfit(Surv(rr,baders$leaderfall_reg) ~ 1) # Kaplan Meier estimate
+fit
+S <- fit$surv
+S
+T <- fit$time
+T
+# Plot residuals
+plot(T,S, xlim=range(T), ylim=c(0,1), xlab="time", ylab="Cox-Snell residual values")
+t0 <- seq(0,max(T), 0.05)
+s0 <- exp(-t0)
+lines(t0,s0)
+
+### ANALYZING RESIDUALS: Testing proportional hazards assumption (Schoenfeld residuals)
+cox.zph(CoxModel.2)
+plot(cox.zph(CoxModel.2))
+
+stargazer(Test.2, CoxModel.2, type="text")
+
+######Cox Models##########
+#for interaction in R :
+CoxModel.P <- coxph(Surv(leader_duration,leaderfall_reg) ~ diplomacyAddlag + laglnarms +
+                      laglnexpCHshare + growthlag + lngdplag + mduration_reg +
+                      leaderfallregion_reg + 
+                    , method = "efron", data = baders)
+summary(CoxModel.P)
+
+CoxModel.1 <- coxph(Surv(leader_duration,leaderfall_reg) ~ diplomacyAddlag + laglnarms +
+                      laglnexpCHshare + growthlag + lngdplag + lagautopolity + mduration_reg +
+                      leaderfallregion_reg 
+                    , method = "efron", data = baders)
+summary(CoxModel.1)
+plot(survfit(CoxModel.1), ylim=c(0,1), xlab="years in office", ylab="surival rate")
+
+CoxModel.2 <- coxph(Surv(leader_duration,leaderfall_reg) ~ diplomacyAddlag + laglnarms +
+                      laglnexpCHshare + lagpolitydXdiplomacyAdd + lagpolitydXlnexpCHshare +
+                      lagpolitydXarms + growthlag + lngdplag + mduration_reg +
+                      leaderfallregion_reg + lagautopolity 
+                    , method = "efron", data = baders)
+summary(CoxModel.2)
+plot(survfit(CoxModel.2), ylim=c(0,1), xlab="years in office", ylab="surival rate")
+
+CoxModel.3 <- coxph(Surv(leader_duration,leaderfall_reg) ~ lagnoprojectsM + growthlag + 
+                      lngdplag + mduration_reg + leaderfallregion_reg + lagautopolity  
+                    , method = "efron", data = baders)
+summary(CoxModel.3)
+plot(survfit(CoxModel.3), ylim=c(0,1), xlab="time", ylab="surival")
+
+
+CoxModel.4 <- coxph(Surv(leader_duration,leaderfall_reg) ~ lagnoprojectsM + lagpolitydXChinaaid +
+                      growthlag + lngdplag + mduration_reg + leaderfallregion_reg + lagautopolity 
+                    , method = "efron", data = baders)
+summary(CoxModel.4)
+plot(survfit(CoxModel.4), ylim=c(0,1), xlab="time", ylab="surival")
+
+
+CoxModel.5 <- coxph(Surv(leader_duration,leaderfall_reg) ~ laglneconcoopMGDP + growthlag +
+                      lngdplag + mduration_reg + leaderfallregion_reg + lagautopolity  
+                    , method = "efron", data = baders)
+summary(CoxModel.5)
+plot(survfit(CoxModel.5), ylim=c(0,1), xlab="time", ylab="surival")
+
+CoxModel.6 <- coxph(Surv(leader_duration,leaderfall_reg) ~ laglneconcoopMGDP + lagpolitydXlneconcoopMGDP +
+                      growthlag + lngdplag + mduration_reg + leaderfallregion_reg + lagautopolity  
+                    , method = "efron", data = baders)
+summary(CoxModel.6)
+plot(survfit(CoxModel.6), ylim=c(0,1), xlab="time", ylab="surival")
+
+stargazer(CoxModel.1,CoxModel.2,CoxModel.3,CoxModel.4,CoxModel.5,CoxModel.6,type="text")
+
+#Transformation into long data set because of time-varying covariates
+#like Mills 2011 chapter 5 p16ff
+.CovSets <-structure(list(covariate.1=c("lagautopolity")), .Names = "covariate.1")
+baders.long2 <- unfold(baders, time="X_t", event="leaderfall_reg",
+                      cov=.CovSets, cov.names=c("covariate.1"))
+remove(.CovSets)
+save(baders.long2, file="baders.long2.rda")
+
+load("baders.long.rda")
+table(baders.long$start) # 2889 0
+table(baders.long$stop) # 2889 1
+table(baders.long$covariate.1) # 1364 0 1525 1 same as lagautopolity
+table(baders.long$lagautopolity) 
+View(baders.long)
+
+######Cox Models########## with long data set as a test
+CoxModel.P <- coxph(formula= Surv(start, stop, leaderfall_reg.time) ~ diplomacyAddlag + laglnarms +
+                      laglnexpCHshare + growthlag + lngdplag + mduration_reg +
+                      leaderfallregion_reg + covariate.1
+                    , method = "efron", data = baders.long)
+summary(CoxModel.P)
+
+CoxModel.11 <- coxph(formula= Surv(start, stop, leaderfall_reg.time) ~ diplomacyAddlag + laglnarms +
+                      laglnexpCHshare + growthlag + lngdplag + mduration_reg +
+                      leaderfallregion_reg + covariate.1
+                    , method = "efron", data = baders.long)
+summary(CoxModel.11)
+
+CoxModel.22 <- coxph(formula= Surv(start, stop, leaderfall_reg.time) ~ diplomacyAddlag + laglnarms +
+                      laglnexpCHshare + lagpolitydXdiplomacyAdd + lagpolitydXlnexpCHshare +
+                      lagpolitydXarms + growthlag + lngdplag + mduration_reg +
+                      leaderfallregion_reg + covariate.1
+                    , method = "efron", data = baders.long)
+summary(CoxModel.22)
+
+CoxModel.33 <- coxph(formula= Surv(start, stop, leaderfall_reg.time) ~ lagnoprojectsM + growthlag + 
+                      lngdplag + mduration_reg + leaderfallregion_reg + covariate.1
+                    , method = "efron", data = baders.long)
+summary(CoxModel.33)
+
+CoxModel.44 <- coxph(formula= Surv(start, stop, leaderfall_reg.time) ~ lagnoprojectsM + lagpolitydXChinaaid +
+                      growthlag + lngdplag + mduration_reg + leaderfallregion_reg + covariate.1
+                    , method = "efron", data = baders.long)
+summary(CoxModel.44)
+
+CoxModel.55 <- coxph(formula= Surv(start, stop, leaderfall_reg.time) ~ laglneconcoopMGDP + growthlag +
+                      lngdplag + mduration_reg + leaderfallregion_reg + covariate.1
+                    , method = "efron", data = baders.long)
+summary(CoxModel.55)
+
+CoxModel.66 <- coxph(formula= Surv(start, stop, leaderfall_reg.time) ~ laglneconcoopMGDP + lagpolitydXlneconcoopMGDP +
+                      growthlag + lngdplag + mduration_reg + leaderfallregion_reg + covariate.1
+                    , method = "efron", data = baders.long)
+summary(CoxModel.66)
+stargazer(CoxModel.11,CoxModel.22,CoxModel.33,CoxModel.44,CoxModel.55,CoxModel.66,type="text")
+
+#Simulate Marginal Effect of exports to china for autocracies and democracies
+summary(CoxModel.2)
+M1 <- coxsimInteract(CoxModel.2, b1 = "laglnexpCHshare", b2 = "lagautopolity",
+                       qi = "Marginal Effect",
+                       X2 = seq(-13.81551, 1.87976, by = 1), nsim = 100, extremesDrop = FALSE)
+M1
+# Plot the results
+simGG(M1, ribbons = TRUE, alpha = 1, xlab = "laglnexpCHshare",
+      ylab = "Marginal effect of lethal\n")
+
+#Surival Curve
+summary(baders$laglnexpCHshare)
+sd(baders$laglnexpCHshare, na.rm = FALSE)
+a<-sd(baders$laglnexpCHshare)
+class(baders$laglnexpCHshare)
+nrow(baders)
+
+#Create a sub-sample for Political System
+baders_democracy <- baders[ baders $ lagautopolity == 1, ] 
+View(baders_democracy)
+table(baders_democracy$leader_duration)
+baders_autocracy <- baders[ baders $ lagautopolity == 0, ] 
+View(baders_autocracy)
+table(baders_autocracy$leader_duration)
+
+CoxModel.2.Demo <- coxph(Surv(leader_duration,leaderfall_reg) ~ diplomacyAddlag + laglnarms +
+                      laglnexpCHshare + lagpolitydXdiplomacyAdd + lagpolitydXlnexpCHshare +
+                      lagpolitydXarms + growthlag + lngdplag + mduration_reg +
+                      leaderfallregion_reg + lagautopolity 
+                    , method = "efron", data = baders_democracy)
+summary(CoxModel.2.Demo)
+plot(survfit(CoxModel.2.Demo), ylim=c(0,1), xlab="years in office", ylab="surival rate")
+
+CoxModel.2.Auto <- coxph(Surv(leader_duration,leaderfall_reg) ~ diplomacyAddlag + laglnarms +
+                           laglnexpCHshare + lagpolitydXdiplomacyAdd + lagpolitydXlnexpCHshare +
+                           lagpolitydXarms + growthlag + lngdplag + mduration_reg +
+                           leaderfallregion_reg + lagautopolity 
+                         , method = "efron", data =baders_autocracy)
+summary(CoxModel.2.Auto)
+plot(survfit(CoxModel.2.Auto), ylim=c(0,1), xlab="years in office", ylab="surival rate")
+
+
+#trying to code a surivival curve for different export levels
+
+fit <- survfit(Surv(leader_duration,leaderfall_reg) ~ diplomacyAddlag + laglnarms +
+                 laglnexpCHshare + growthlag + lngdplag + mduration_reg +
+                 leaderfallregion_reg  
+               , method = "efron", data = baders_democracy)
+
+fit <- survfit(Surv(leader_duration,leaderfall_reg) ~ laglnexpCHshare, data = baders_democracy)
+ggsurvplot(fit,  xlim = c(-6.37706,1.87976), data = baders_democracy)
+ggcoxfunctional(fit)
+#8 Plot Kaplan-Meier Curve
+install.packages("survminer")
+#https://rpkgs.datanovia.com/survminer/index.html
+library(survminer)
+
+plot(Democracies, conf.int=T,xlab="years in office",
+     ylab="exports", lab=c(-6.37706,1.87976))
+#adds title above plot
+mtext("KM survival curve for the leukemia data",3,line=1, at=80)
+#adds legend
+legend ("topright", c("lower 95% CI", "survival estimate", "upper 95% CI"), lty=c(2,1,2))
+
+install.packages("coxphw", dependencies = TRUE)
+library(coxphw) # load read_dta
+fit1 <- coxphw(Surv(leader_duration,leaderfall_reg) ~ diplomacyAddlag + laglnarms +
+                 laglnexpCHshare + lagpolitydXdiplomacyAdd + lagpolitydXlnexpCHshare +
+                 lagpolitydXarms + growthlag + lngdplag + mduration_reg +
+                 leaderfallregion_reg + lagautopolity + lntautopolity
+               , data = baders, template = "AHR")
+summary(fit1)
+  
